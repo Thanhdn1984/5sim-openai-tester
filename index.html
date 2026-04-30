@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>5sim × OpenAI Phone Tester</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f9f9f7; --bg2: #f1f0ec; --bg3: #ffffff;
+    --border: rgba(0,0,0,0.1); --border2: rgba(0,0,0,0.2);
+    --text: #1a1a18; --text2: #6b6b66; --text3: #9b9b94;
+    --green: #0f6e56; --green-bg: #e1f5ee;
+    --red: #993c1d; --red-bg: #faece7;
+    --amber: #854f0b; --amber-bg: #faeeda;
+    --blue: #185fa5; --blue-bg: #e6f1fb;
+    --r: 8px; --rl: 12px;
+    --mono: 'SF Mono','Fira Code','Consolas',monospace;
+    --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a; --bg2: #252523; --bg3: #2e2e2b;
+      --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.15);
+      --text: #e8e8e2; --text2: #9b9b94; --text3: #6b6b66;
+      --green: #5dcaa5; --green-bg: #04342c;
+      --red: #f0997b; --red-bg: #4a1b0c;
+      --amber: #ef9f27; --amber-bg: #412402;
+      --blue: #85b7eb; --blue-bg: #042c53;
+    }
+  }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; padding: 24px 16px; }
+  .wrap { max-width: 700px; margin: 0 auto; }
+  h1 { font-size: 18px; font-weight: 500; margin-bottom: 4px; }
+  .sub { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+  .card { background: var(--bg3); border: 0.5px solid var(--border); border-radius: var(--rl); padding: 18px; margin-bottom: 12px; }
+  .card-title { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 14px; }
+  .row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .row label { font-size: 13px; color: var(--text2); min-width: 80px; flex-shrink: 0; }
+  input, select { flex: 1; padding: 7px 10px; border: 0.5px solid var(--border2); border-radius: var(--r); font-size: 13px; background: var(--bg2); color: var(--text); font-family: var(--sans); outline: none; transition: border-color 0.15s; }
+  input:focus, select:focus { border-color: var(--text2); }
+  .btn { padding: 7px 14px; border-radius: var(--r); font-size: 13px; font-weight: 500; cursor: pointer; border: 0.5px solid var(--border2); background: var(--bg3); color: var(--text); font-family: var(--sans); transition: background 0.15s, transform 0.1s; white-space: nowrap; }
+  .btn:hover { background: var(--bg2); }
+  .btn:active { transform: scale(0.97); }
+  .btn-p { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .btn-p:hover { opacity: 0.82; background: var(--text); }
+  .btn-d { color: var(--red); border-color: var(--red); }
+  .btn-d:hover { background: var(--red-bg); }
+  .btn-sm { padding: 4px 10px; font-size: 11px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .stat { background: var(--bg2); border-radius: var(--r); padding: 12px; text-align: center; }
+  .stat-val { font-size: 22px; font-weight: 500; }
+  .stat-lbl { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .ctry-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; margin-bottom: 10px; }
+  .ctry-btn { padding: 7px 8px; font-size: 12px; border: 0.5px solid var(--border); border-radius: var(--r); background: var(--bg2); color: var(--text2); cursor: pointer; text-align: center; transition: all 0.15s; font-family: var(--sans); }
+  .ctry-btn:hover { border-color: var(--border2); color: var(--text); }
+  .ctry-btn.active { border-color: var(--border2); background: var(--bg3); color: var(--text); font-weight: 500; }
+  .ctry-btn .x { margin-left: 4px; opacity: 0.35; font-size: 10px; cursor: pointer; }
+  .ctry-btn .x:hover { opacity: 1; color: var(--red); }
+  .add-row { display: flex; gap: 6px; margin-top: 8px; }
+  .divider { height: 0.5px; background: var(--border); margin: 12px 0; }
+  .log { background: var(--bg2); border-radius: var(--r); padding: 12px; font-size: 12px; font-family: var(--mono); max-height: 220px; overflow-y: auto; line-height: 1.7; }
+  .le { padding: 1px 0; border-bottom: 0.5px solid var(--border); }
+  .le:last-child { border-bottom: none; }
+  .ok { color: var(--green); } .er { color: var(--red); } .wn { color: var(--amber); }
+  .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: var(--r); font-weight: 500; }
+  .b-ok { background: var(--green-bg); color: var(--green); }
+  .b-er { background: var(--red-bg); color: var(--red); }
+  .b-wn { background: var(--amber-bg); color: var(--amber); }
+  .b-info { background: var(--blue-bg); color: var(--blue); }
+  .nc { background: var(--bg2); border-radius: var(--r); padding: 10px 12px; margin-bottom: 6px; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .num { font-family: var(--mono); font-size: 14px; font-weight: 500; }
+  .meta { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .code-box { background: var(--blue-bg); border-radius: var(--r); padding: 8px 14px; text-align: center; font-size: 22px; font-family: var(--mono); font-weight: 500; color: var(--blue); letter-spacing: 0.2em; margin-top: 8px; }
+  .timer { font-size: 12px; color: var(--amber); font-family: var(--mono); }
+  .spin { display: inline-block; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hidden { display: none !important; }
+  .tag { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 20px; padding: 3px 10px; font-size: 12px; color: var(--text2); display: inline-flex; align-items: center; gap: 4px; }
+  .hint { font-size: 11px; color: var(--text3); margin-top: 8px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>5sim × OpenAI Phone Tester</h1>
+  <p class="sub">Mua số từ 5sim và kiểm tra xem OpenAI có gửi SMS thành công không</p>
+
+  <div class="card">
+    <div class="card-title">5sim API key</div>
+    <div class="row">
+      <label>API Key</label>
+      <input type="password" id="apiKey" placeholder="Bearer token từ 5sim.net → Profile → API" />
+      <button class="btn" onclick="checkBalance()">Kiểm tra</button>
+    </div>
+    <div class="grid2 hidden" id="balArea">
+      <div class="stat"><div class="stat-val ok" id="balVal">$0.00</div><div class="stat-lbl">Số dư</div></div>
+      <div class="stat"><div class="stat-val" id="ordVal">0</div><div class="stat-lbl">Tổng đơn</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Chọn quốc gia</div>
+    <div class="ctry-grid" id="ctryGrid"></div>
+    <div class="add-row">
+      <input type="text" id="newCode" placeholder="Mã (vd: vietnam, russia...)" style="flex:1" />
+      <input type="text" id="newLabel" placeholder="Nhãn (vd: 🇻🇳 Vietnam)" style="flex:1" />
+      <button class="btn" onclick="addCountry()">+ Thêm</button>
+    </div>
+    <p class="hint">Mã chuẩn 5sim: indonesia, philippines, cambodia, india, usa, ukraine, russia, brazil, vietnam, thailand, malaysia, kenya, nigeria, pakistan...</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Cấu hình mua số</div>
+    <div class="row">
+      <label>Operator</label>
+      <select id="opSel"><option value="any">Any (tự động)</option></select>
+    </div>
+    <div class="row">
+      <label>Số lượng</label>
+      <input type="number" id="qty" value="1" min="1" max="20" style="max-width:70px;flex:none" />
+      <span style="font-size:12px;color:var(--text2);flex:1;padding-left:6px">số (tối đa 20)</span>
+      <button class="btn" onclick="window.open('https://auth.openai.com/add-phone','_blank')" style="background:var(--bg2);border-color:var(--border2)">🔗 Mở OpenAI</button>
+      <button class="btn btn-p" onclick="buyNumbers()" id="buyBtn">Mua &amp; test số</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="activeSection">
+    <div class="card-title">Đang chờ SMS &nbsp;<span id="activeCnt" class="tag">0 số</span></div>
+    <div id="numList"></div>
+    <div class="divider"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-d btn-sm" onclick="cancelAll()">Hủy tất cả</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Kết quả</div>
+    <div class="grid2">
+      <div class="stat"><div class="stat-val ok" id="okCnt">0</div><div class="stat-lbl">Nhận được SMS</div></div>
+      <div class="stat"><div class="stat-val er" id="failCnt">0</div><div class="stat-lbl">Số bị từ chối</div></div>
+    </div>
+    <div class="log" id="logBox">
+      <div class="le" style="color:var(--text3)">Nhật ký hoạt động sẽ hiện ở đây...</div>
+    </div>
+  </div>
+  <!-- Code Alert Modal -->
+  <div id="codeAlert" class="hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:999">
+    <div style="background:var(--bg3);border-radius:var(--rl);padding:32px;max-width:380px;width:90%;text-align:center;border:2px solid var(--green)">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:8px">SMS nhận được từ</div>
+      <div id="alertPhone" style="font-family:var(--mono);font-size:14px;font-weight:500;margin-bottom:20px"></div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:8px">Mã xác thực OpenAI</div>
+      <div id="alertCode" style="font-family:var(--mono);font-size:42px;font-weight:500;color:var(--blue);letter-spacing:0.25em;background:var(--blue-bg);border-radius:var(--r);padding:16px;margin-bottom:20px"></div>
+      <div style="font-size:12px;color:var(--green);margin-bottom:20px">✓ Đã tự động copy vào clipboard</div>
+      <button class="btn btn-p" style="width:100%;padding:12px" onclick="document.getElementById('codeAlert').classList.add('hidden')">Đóng (Cmd+V để dán vào OpenAI)</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const BASE = 'https://plain-pond-3299.thanhagribankdn84.workers.dev/v1';
+let sel = 'indonesia';
+let orders = {}, timers = {}, okN = 0, failN = 0;
+
+const OPS = {
+  indonesia:['telkomsel','indosat','xl','three','axis','virtual'],
+  philippines:['globe','smart','sun','dito','virtual'],
+  cambodia:['metfone','smart','cellcard','virtual'],
+  india:['airtel','jio','bsnl','vi','virtual'],
+  usa:['att','tmobile','verizon','virtual'],
+  ukraine:['kyivstar','lifecell','vodafone','virtual'],
+  russia:['mts','megafon','beeline','tele2','virtual'],
+  brazil:['claro','tim','vivo','oi','virtual'],
+  vietnam:['viettel','mobifone','vinaphone','virtual'],
+  thailand:['ais','dtac','true','virtual'],
+  malaysia:['maxis','celcom','digi','virtual'],
+  kenya:['safaricom','airtel','virtual'],
+  nigeria:['mtn','airtel','glo','virtual'],
+  pakistan:['jazz','telenor','zong','ufone','virtual'],
+};
+
+const DEFAULT_CTRY = [
+  {code:'indonesia',label:'🇮🇩 Indonesia'},
+  {code:'philippines',label:'🇵🇭 Philippines'},
+  {code:'cambodia',label:'🇰🇭 Cambodia'},
+  {code:'india',label:'🇮🇳 India'},
+  {code:'usa',label:'🇺🇸 USA'},
+  {code:'ukraine',label:'🇺🇦 Ukraine'},
+  {code:'russia',label:'🇷🇺 Russia'},
+  {code:'brazil',label:'🇧🇷 Brazil'},
+  {code:'vietnam',label:'🇻🇳 Vietnam'},
+];
+
+let countries = (() => { try { return JSON.parse(localStorage.getItem('5sim_c')) || DEFAULT_CTRY; } catch(e) { return DEFAULT_CTRY; } })();
+
+function saveC() { try { localStorage.setItem('5sim_c', JSON.stringify(countries)); } catch(e){} }
+
+function renderC() {
+  document.getElementById('ctryGrid').innerHTML = countries.map((c,i) =>
+    `<div class="ctry-btn${c.code===sel?' active':''}" onclick="selC('${c.code}',this)">
+      ${c.label}<span class="x" onclick="event.stopPropagation();rmC(${i})">✕</span>
+    </div>`
+  ).join('');
+}
+
+function selC(code, el) {
+  sel = code;
+  document.querySelectorAll('.ctry-btn').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const ops = OPS[code] || ['virtual'];
+  const s = document.getElementById('opSel');
+  s.innerHTML = '<option value="any">Any (tự động)</option>';
+  ops.forEach(o => { const opt = document.createElement('option'); opt.value=o; opt.textContent=o.charAt(0).toUpperCase()+o.slice(1); s.appendChild(opt); });
+}
+
+function addCountry() {
+  const code = document.getElementById('newCode').value.trim().toLowerCase().replace(/\s+/g,'');
+  const label = document.getElementById('newLabel').value.trim();
+  if (!code) { addLog('Nhập mã quốc gia', 'er'); return; }
+  if (countries.find(c=>c.code===code)) { addLog('Quốc gia đã có', 'wn'); return; }
+  countries.push({code, label: label||('🌐 '+code)});
+  saveC(); renderC();
+  document.getElementById('newCode').value = '';
+  document.getElementById('newLabel').value = '';
+  addLog('Đã thêm: '+code, 'ok');
+}
+
+function rmC(i) {
+  const r = countries[i]; countries.splice(i,1); saveC();
+  if (sel===r.code) sel = countries[0]?.code||'indonesia';
+  renderC();
+}
+
+function getKey() { return document.getElementById('apiKey').value.trim(); }
+
+function hdrs() {
+  return { 'Authorization': 'Bearer ' + getKey(), 'Accept': 'application/json' };
+}
+
+async function checkBalance() {
+  if (!getKey()) { addLog('Chưa nhập API key', 'er'); return; }
+  addLog('Kiểm tra số dư...', 'wn');
+  try {
+    const r = await fetch(BASE+'/user/profile', {headers: hdrs()});
+    const d = await r.json();
+    if (d.balance !== undefined) {
+      document.getElementById('balArea').classList.remove('hidden');
+      document.getElementById('balVal').textContent = '$'+parseFloat(d.balance).toFixed(4);
+      document.getElementById('ordVal').textContent = d.orders_count||0;
+      addLog('Số dư: $'+parseFloat(d.balance).toFixed(4), 'ok');
+    } else {
+      addLog('Lỗi: '+(d.message||JSON.stringify(d)), 'er');
+    }
+  } catch(e) { addLog('Lỗi fetch: '+e.message, 'er'); }
+}
+
+async function buyNumbers() {
+  if (!getKey()) { addLog('Chưa nhập API key', 'er'); return; }
+  const qty = Math.min(parseInt(document.getElementById('qty').value)||1, 20);
+  const op = document.getElementById('opSel').value;
+  const btn = document.getElementById('buyBtn');
+  btn.innerHTML = '<span class="spin">↻</span> Đang mua...';
+  btn.disabled = true;
+  for (let i=0; i<qty; i++) { await buyOne(op); if (i<qty-1) await sleep(700); }
+  btn.textContent = 'Mua & test số';
+  btn.disabled = false;
+  renderActive();
+}
+
+async function buyOne(op) {
+  const url = `${BASE}/user/buy/activation/${sel}/${op}/openai`;
+  addLog(`Mua số ${sel}/${op}...`, 'wn');
+  try {
+    const r = await fetch(url, {headers: hdrs()});
+    const d = await r.json();
+    if (d.phone) {
+      orders[d.id] = {id:d.id, phone:d.phone, country:sel, op, status:'PENDING', code:null, expires:Date.now()+20*60*1000};
+      addLog('Mua được: '+d.phone+' (ID:'+d.id+')', 'ok');
+      startPoll(d.id);
+    } else {
+      addLog('Không mua được: '+(d.message||JSON.stringify(d)), 'er');
+      failN++; document.getElementById('failCnt').textContent=failN;
+    }
+  } catch(e) { addLog('Lỗi: '+e.message, 'er'); failN++; document.getElementById('failCnt').textContent=failN; }
+}
+
+function startPoll(id) {
+  timers[id] = setInterval(async () => {
+    const o = orders[id]; if (!o) { clearInterval(timers[id]); return; }
+    if (Date.now() > o.expires) {
+      addLog('Hết giờ: '+o.phone+' — không nhận SMS', 'er');
+      clearInterval(timers[id]); delete orders[id];
+      failN++; document.getElementById('failCnt').textContent=failN;
+      renderActive(); return;
+    }
+    try {
+      const r = await fetch(`${BASE}/user/check/${id}`, {headers: hdrs()});
+      const d = await r.json();
+      if (d.sms && d.sms.length>0) {
+        const code = d.sms[0].code||d.sms[0].text;
+        addLog('CODE: '+o.phone+' → '+code, 'ok');
+        orders[id].status='RECEIVED'; orders[id].code=code;
+        clearInterval(timers[id]);
+        okN++; document.getElementById('okCnt').textContent=okN;
+        renderActive();
+        // Auto copy + alert
+        try { await navigator.clipboard.writeText(code); addLog('Đã copy code vào clipboard!', 'ok'); } catch(e){}
+        showCodeAlert(o.phone, code);
+      } else if (['CANCELED','BANNED','TIMEOUT'].includes(d.status)) {
+        addLog('Số bị hủy: '+o.phone, 'er');
+        clearInterval(timers[id]); delete orders[id];
+        failN++; document.getElementById('failCnt').textContent=failN;
+        renderActive();
+      }
+    } catch(e){}
+  }, 5000);
+}
+
+async function cancelOrder(id) {
+  try { await fetch(`${BASE}/user/cancel/${id}`, {headers: hdrs()}); } catch(e){}
+  clearInterval(timers[id]);
+  addLog('Đã hủy: '+(orders[id]?.phone||id), 'wn');
+  delete orders[id]; renderActive();
+}
+
+async function cancelAll() { for (const id of Object.keys(orders)) await cancelOrder(id); }
+
+function renderActive() {
+  const keys = Object.keys(orders);
+  const sec = document.getElementById('activeSection');
+  document.getElementById('activeCnt').textContent = keys.length+' số';
+  if (!keys.length) { sec.classList.add('hidden'); return; }
+  sec.classList.remove('hidden');
+  document.getElementById('numList').innerHTML = keys.map(id => {
+    const o = orders[id];
+    const left = Math.max(0, Math.ceil((o.expires-Date.now())/1000));
+    const m = Math.floor(left/60), s = left%60;
+    const badge = o.status==='RECEIVED' ? '<span class="badge b-ok">Có code</span>' : '<span class="badge b-wn">Chờ SMS...</span>';
+    const codeHtml = o.code ? `<div class="code-box">${o.code}</div>` : '';
+    return `<div class="nc">
+      <div style="flex:1"><div class="num">${o.phone}</div><div class="meta">ID:${id} | ${o.country}/${o.op}</div>${codeHtml}</div>
+      <div style="text-align:right;flex-shrink:0">${badge}<br><span class="timer">${m}:${String(s).padStart(2,'0')}</span><br>
+      <button class="btn btn-sm" style="margin-top:6px;margin-bottom:4px;width:100%;background:var(--blue-bg);color:var(--blue);border-color:var(--blue)" onclick="swapNumber('${id}')">↻ Đổi số mới</button><br>
+      <button class="btn btn-d btn-sm" onclick="cancelOrder('${id}')">Hủy</button></div>
+    </div>`;
+  }).join('');
+}
+
+setInterval(renderActive, 5000);
+
+function addLog(msg, type) {
+  const box = document.getElementById('logBox');
+  const ph = box.querySelector('[style*="text3"]'); if (ph) ph.remove();
+  const el = document.createElement('div');
+  el.className = 'le'+(type?' '+type:'');
+  el.textContent = '['+new Date().toLocaleTimeString('vi-VN')+'] '+msg;
+  box.insertBefore(el, box.firstChild);
+  if (box.children.length>100) box.removeChild(box.lastChild);
+}
+
+async function swapNumber(id) {
+  const o = orders[id];
+  if (!o) return;
+  addLog('Đang đổi số mới...', 'wn');
+  // Hủy số cũ
+  try { await fetch(BASE+'/user/cancel/'+id, {headers: hdrs()}); } catch(e){}
+  clearInterval(timers[id]);
+  delete orders[id];
+  renderActive();
+  // Mua số mới cùng country/op
+  await buyOne(o.op === 'any' ? 'any' : o.op);
+  renderActive();
+}
+
+function copyNum(phone) {
+  navigator.clipboard.writeText(phone).then(() => {
+    addLog('Đã copy số: ' + phone + ' → dán vào OpenAI', 'ok');
+  }).catch(() => {
+    addLog('Số cần copy: ' + phone, 'ok');
+  });
+}
+
+function showCodeAlert(phone, code) {
+  const el = document.getElementById('codeAlert');
+  document.getElementById('alertPhone').textContent = phone;
+  document.getElementById('alertCode').textContent = code;
+  el.classList.remove('hidden');
+  // Play beep
+  try {
+    const ctx = new AudioContext();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 880; g.gain.value = 0.3;
+    o.start(); o.stop(ctx.currentTime + 0.3);
+  } catch(e){}
+}
+
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+renderC(); selC('indonesia', null);
+</script>
+</body>
+</html>
